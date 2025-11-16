@@ -149,25 +149,25 @@ def apply_low_pass_filter(mask_dataframes):
 
 
 def feature_kmeans_clustering(mask_dataframes):
-    # 각 트라이얼의 시계열을 통계적 특징으로 변환
+    # use mean and median of smoothed dilation pupil diameter as features
     features = []
     for idx, trial_df in enumerate(mask_dataframes):
         data = trial_df['SmoothedDilationPupilLeftEye'].values
         if np.isnan(data).any().item():
             print(f"Trial {idx} has NaN values")
         feature_vector = [
-            np.mean(data),           # 평균
-            np.median(data),         # 중앙값
+            np.mean(data),           # mean
+            np.median(data),         # median
         ]
         features.append(feature_vector)
     
     features = np.array(features)
     
-    # 정규화
+    # normalize the features
     scaler = StandardScaler()
     features_scaled = scaler.fit_transform(features)
     
-    # K-Means 클러스터링
+    # K-Means clustering
     kmeans = KMeans(n_clusters=2, random_state=42)
     cluster_labels = kmeans.fit_predict(features_scaled)
     

@@ -161,6 +161,17 @@ def apply_low_pass_filter(mask_dataframes):
 
     return mask_dataframes
 
+def calculate_velocity(dataframe, target_channel: str, channel_name="SmoothedDilationVelocity", grad=True):
+    #print(dataframe)
+    for i, trial_df in enumerate(dataframe):
+        series_values = dataframe[i].loc[:, target_channel].values
+        if grad:
+            velocity = np.gradient(series_values)
+        else:
+            velocity = np.diff(series_values, prepend=dataframe[i].loc[:, target_channel].values[0])
+        dataframe[i].loc[:, channel_name] = velocity
+    return dataframe
+
 def plot_trial(filtered_all_trial_dataframes, random_numbers,ax1):
     for i in random_numbers:
         trial_df = filtered_all_trial_dataframes[i]
@@ -169,7 +180,7 @@ def plot_trial(filtered_all_trial_dataframes, random_numbers,ax1):
                 ax1.plot(trial_df['ElapsedTime'], trial_df[column], label=column)
         ax1.set_xlabel('Time (ms)')
         ax1.set_ylabel('Pupil Diameter (mm)')
-        plt.title(f'Random Trial {i+1}: Subject {trial_df['Subject'].iloc[0]}, Trial: {trial_df["TrialId"].iloc[0]} (NumCorrect: {trial_df["NumCorrect"].iloc[0]})')
+        plt.title(f'Random Trial {i+1}: Subject {trial_df["Subject"].iloc[0]}, Trial: {trial_df["TrialId"].iloc[0]} (NumCorrect: {trial_df["NumCorrect"].iloc[0]})')
         ax1.legend(loc='upper left')
 
 def confirm_no_nans(mask_dataframes): 
@@ -331,8 +342,8 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, epochs=20
 
         for X_seq_batch, X_feat_batch, y_batch in train_loader:
             optimizer.zero_grad()
-
-            logits = model(X_seq_batch, X_feat_batch)
+            dummy_seq = torch.zeros_like(X_seq_batch)
+            logits = model(dummy_seq, X_feat_batch)
             loss = criterion(logits, y_batch.float())
 
             loss.backward()
@@ -354,8 +365,9 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, epochs=20
 
         with torch.no_grad():
             for X_seq_batch, X_feat_batch, y_batch in val_loader:
+                dummy_seq = torch.zeros_like(X_seq_batch)
 
-                logits = model(X_seq_batch, X_feat_batch)
+                logits = model(dummy_seq, X_feat_batch)
                 loss = criterion(logits, y_batch.float())
 
                 val_loss += loss.item() * len(y_batch)
@@ -372,7 +384,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, epochs=20
             f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.3f}"
         )
 
-def evaluate_accuracy(model, loader, device="cpu"):
+def evaluate_accuracy(model, loader, device="cpu", random=True):
     model.eval()
     correct = 0
     total = 0
@@ -386,6 +398,8 @@ def evaluate_accuracy(model, loader, device="cpu"):
             logits = model(X_seq_batch, X_feat_batch).squeeze(1)
             probs = torch.sigmoid(logits)
             preds = (probs >= 0.5).long()
+            if random:
+                preds = torch.randint(0, 2, size=probs.size()).to(device)
             correct += (preds == y_batch.squeeze(1).long()).sum().item()
 
             total += y_batch.size(0)
@@ -445,6 +459,8 @@ if __name__ == "__main__":
     filtered_all_trial_dataframes = interpolate_diameter_pupil(filtered_all_trial_dataframes)
     mask_dataframes = dilation_preprocessing(filtered_all_trial_dataframes)
     mask_dataframes = apply_low_pass_filter(mask_dataframes)
+    mask_dataframes = calculate_velocity(mask_dataframes, target_channel="SmoothedDilationPupilLeftEye", channel_name="SmoothedDilationVelocityLeftEye", grad=True)
+    mask_dataframes = calculate_velocity(mask_dataframes, target_channel="SmoothedDilationPupilRightEye", channel_name="SmoothedDilationVelocityRightEye", grad=True)
     mask_dataframes = confirm_no_nans(mask_dataframes)
     features_df = extract_pupil_features(mask_dataframes)
     # print(features_df.head())
@@ -458,8 +474,8 @@ if __name__ == "__main__":
     # ----------------------------
     # Prepare X_seq (padded sequences)
     # ----------------------------
-    pupil_cols = ["SmoothedDilationPupilLeftEye", "SmoothedDilationPupilRightEye"]
-    mask_cols = ["LeftBlinkMask", "RightBlinkMask"]
+    pupil_cols = ["SmoothedDilationPupilLeftEye", "SmoothedDilationPupilRightEye", "SmoothedDilationVelocityLeftEye", "SmoothedDilationVelocityRightEye"]
+    mask_cols = [] #["LeftBlinkMask", "RightBlinkMask"]
     all_cols = pupil_cols + mask_cols
 
 
@@ -586,7 +602,7 @@ if __name__ == "__main__":
 
     criterion = torch.nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    train_model(model, train_loader, val_loader, criterion, optimizer, epochs=30)
+    train_model(model, train_loader, val_loader, criterion, optimizer, epochs=1)
 
 
     test_acc = evaluate_accuracy(model, test_loader)

@@ -107,6 +107,7 @@ def dilation_preprocessing(filtered_all_trial_dataframes):
         adjusted_time_bin_df['Session'] = trial_df_mask['Session'].iloc[0]
         adjusted_time_bin_df['TrialId'] = trial_df_mask['TrialId'].iloc[0]
         adjusted_time_bin_df['CurrentObject'] = trial_df_mask['CurrentObject'].iloc[0]
+        adjusted_time_bin_df['NumCorrect'] = trial_df_mask['NumCorrect'].iloc[0]
 
         return adjusted_time_bin_df
         
@@ -136,8 +137,10 @@ def dilation_preprocessing(filtered_all_trial_dataframes):
             trial_df["DiameterPupilLeftEye"] - baseline_left_pupil,
             np.nan)
 
-        mask_dataframes.append(trial_df.loc[trial_df["CurrentObject"] == "Mask"].copy())
-    # mask_dataframes = mask_dataframes[1:] # remove the first trial because it is not a mask trial
+        mask_dataframes.append(trial_df)
+        # if trial_df['NumCorrect'].min().item() == 0 or trial_df['NumCorrect'].min().item() == 6:
+        #     mask_dataframes.append(trial_df)
+
     print(f"Num trials after removing all parts of trial except 'delay period': {len(mask_dataframes)}")
     return mask_dataframes
 
@@ -168,13 +171,58 @@ def apply_low_pass_filter(mask_dataframes):
 
     return mask_dataframes
 
+<<<<<<< HEAD
 def preprocess_data():
+=======
+
+def group_by_subject(dataframes):
+    """
+    Group dataframes by subject
+    
+    Args:
+        dataframes: list of dataframes (each dataframe must contain 'Subject' column)
+    
+    Returns:
+        dict: {subject: [dataframes for that subject]}
+    """
+    subject_groups = {}
+    
+    for df in dataframes:
+        if 'Subject' not in df.columns:
+            print(f"Warning: 'Subject' column not found in dataframe, skipping...")
+            continue
+        
+        subject = df['Subject'].iloc[0].item()
+        
+        if subject not in subject_groups:
+            subject_groups[subject] = []
+        
+        subject_groups[subject].append(df)
+    
+    print(f"Grouped data into {len(subject_groups)} subjects")
+    for subject, dfs in subject_groups.items():
+        print(f"  Subject {subject}: {len(dfs)} trials")
+    
+    return subject_groups
+
+def preprocess_data(is_group_by_subject=False, return_original=False):
+>>>>>>> d40b239 (feature engineering and anova analysis with report)
     filtered_all_trial_dataframes = call_all_filtered_trial_dataframes()
     filtered_all_trial_dataframes = interpolate_diameter_pupil(filtered_all_trial_dataframes)
     mask_dataframes = dilation_preprocessing(filtered_all_trial_dataframes)
+    if is_group_by_subject:
+        subject_groups = group_by_subject(mask_dataframes)
+        return subject_groups
     # mask_dataframes = apply_low_pass_filter(mask_dataframes)
+    if return_original:
+        return mask_dataframes, filtered_all_trial_dataframes
     return mask_dataframes
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     mask_dataframes = preprocess_data()
     print(mask_dataframes[0])
+=======
+    mask_dataframes = preprocess_data(is_group_by_subject=True)
+    print(mask_dataframes[0])
+>>>>>>> d40b239 (feature engineering and anova analysis with report)

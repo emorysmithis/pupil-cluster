@@ -1,0 +1,74 @@
+================================================================================
+FEATURE ENGINEERING REPORT
+================================================================================
+
+Group Distribution:
+----------------------------------------
+HIGH: 2969 samples
+LOW: 2669 samples
+MEDIUM: 2385 samples
+
+Total Features Extracted: 51
+
+Group-wise Statistics (Top 10 Features):
+----------------------------------------
+
+right_early_mean:
+  F-score: 26.4278, p-value: 3.6327e-12
+  LOW: mean=0.0475, std=0.1872
+  MEDIUM: mean=0.0643, std=0.1892
+  HIGH: mean=0.0832, std=0.1780
+
+left_early_mean:
+  F-score: 26.0737, p-value: 5.1639e-12
+  LOW: mean=0.0515, std=0.1813
+  MEDIUM: mean=0.0657, std=0.1874
+  HIGH: mean=0.0859, std=0.1713
+
+left_peak_idx:
+  F-score: 20.7894, p-value: 9.8763e-10
+  LOW: mean=22.7115, std=11.2920
+  MEDIUM: mean=23.2742, std=10.9633
+  HIGH: mean=24.5355, std=10.4870
+
+left_peak_time_ratio:
+  F-score: 20.7894, p-value: 9.8763e-10
+  LOW: mean=0.5678, std=0.2823
+  MEDIUM: mean=0.5819, std=0.2741
+  HIGH: mean=0.6134, std=0.2622
+
+right_peak_time_ratio:
+  F-score: 20.4378, p-value: 1.4013e-09
+  LOW: mean=0.5707, std=0.2816
+  MEDIUM: mean=0.5807, std=0.2734
+  HIGH: mean=0.6148, std=0.2619
+
+right_peak_idx:
+  F-score: 20.4378, p-value: 1.4013e-09
+  LOW: mean=22.8262, std=11.2644
+  MEDIUM: mean=23.2294, std=10.9341
+  HIGH: mean=24.5904, std=10.4768
+
+left_std:
+  F-score: 3.5644, p-value: 2.8359e-02
+  LOW: mean=87.3255, std=1760.1322
+  MEDIUM: mean=24.6743, std=660.6393
+  HIGH: mean=13.8840, std=321.2695
+
+left_range:
+  F-score: 3.3497, p-value: 3.5142e-02
+  LOW: mean=350.6401, std=6787.4366
+  MEDIUM: mean=115.5088, std=2919.3361
+  HIGH: mean=67.0591, std=1518.6602
+
+right_skew:
+  F-score: 3.2828, p-value: 3.7575e-02
+  LOW: mean=-0.2013, std=1.4948
+  MEDIUM: mean=-0.2354, std=1.4741
+  HIGH: mean=-0.2995, std=1.4270
+
+left_iqr:
+  F-score: 3.2797, p-value: 3.7690e-02
+  LOW: mean=35.5820, std=976.5267
+  MEDIUM: mean=1.7538, std=65.8894
+  HIGH: mean=0.9507, std=39.2190

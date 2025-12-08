@@ -2,4 +2,4 @@ WM study/
 *.gazedata
 
 *.png
- __pycache__/
+ __pycache__/*.pyc

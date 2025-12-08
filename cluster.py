@@ -8,22 +8,27 @@ from preprocess import preprocess_data
 from tslearn.clustering import TimeSeriesKMeans
 from tslearn.preprocessing import TimeSeriesScalerMeanVariance, TimeSeriesScalerMinMax
 
-def feature_kmeans_clustering(mask_dataframes):
+def feature_kmeans_clustering(mask_dataframes, n_clusters=3):
     # use mean and median of smoothed dilation pupil diameter as features
     features = []
     num_correct = []
     for idx, trial_df in enumerate(mask_dataframes):
-        data = trial_df['SmoothedDilationPupilLeftEye'].values
-        if np.isnan(data).any().item():
+        data_left = trial_df['DilationPupilLeftEye'].values
+        data_right = trial_df['DilationPupilRightEye'].values
+        if np.isnan(data_left).any() or np.isnan(data_right).any():
             print(f"Trial {idx} has NaN values")
+        n = len(data_left)
+        early_left = data_left[:n//3]
+        early_right = data_right[:n//3]
+        
         num_correct.append(np.unique(trial_df['NumCorrect']).item())
         feature_vector = [
-            # np.mean(data),           # mean
-            # np.std(data),            # std
-            np.max(data),            # max
-            # np.min(data),            # min
-            np.argmax(data),         # time to peak
-            np.mean(np.diff(data))  # mean of the difference between consecutive points
+            np.mean(early_left),           # mean
+            np.mean(early_right),           # mean
+            np.argmax(data_left),  # peak index
+            np.argmax(data_left) / len(data_left), # peak time ratio
+            np.argmax(data_right),
+            np.argmax(data_right) / len(data_right),
         ]
         features.append(feature_vector)
     
@@ -34,31 +39,26 @@ def feature_kmeans_clustering(mask_dataframes):
     features_scaled = scaler.fit_transform(features)
     
     # K-Means clustering
-    kmeans = KMeans(n_clusters=2, random_state=42)
+    kmeans = KMeans(n_clusters=n_clusters, random_state=42)
     cluster_labels = kmeans.fit_predict(features_scaled)
     
     return cluster_labels, features_scaled, num_correct
 
-def time_series_kmeans_clustering(mask_dataframes, max_iter=10):
+def time_series_kmeans_clustering(mask_dataframes, max_iter=10, n_clusters=3):
     # use the smoothed dilation pupil diameter as a time series
-    length = 463
     features = []
     num_correct = []
     for idx, trial_df in enumerate(mask_dataframes):
-        data = trial_df['SmoothedDilationPupilLeftEye'].values
+        data = trial_df['DilationPupilLeftEye'].values
         if np.isnan(data).any().item():
             print(f"Trial {idx} has NaN values")
         num_correct.append(np.unique(trial_df['NumCorrect']).item())
-        if len(data) != length:
-            cut1, cut2 = (len(data)-length) // 2, (len(data)-length) // 2 + (len(data)-length) % 2
-            features.append(data[cut1:-cut2])
-        else:
-            features.append(data)
+        features.append(data)
     
     features = np.array(features)
     scaler = TimeSeriesScalerMinMax()
     features_scaled = scaler.fit_transform(features)
-    kmeans = TimeSeriesKMeans(n_clusters=6, metric="euclidean", max_iter=max_iter, random_state=0)
+    kmeans = TimeSeriesKMeans(n_clusters=n_clusters, metric="euclidean", max_iter=max_iter, random_state=0)
     cluster_labels = kmeans.fit_predict(features_scaled)
     return cluster_labels, features_scaled, num_correct
 

@@ -141,8 +141,10 @@ def dilation_preprocessing(filtered_all_trial_dataframes):
             trial_df["DiameterPupilLeftEye"] - baseline_left_pupil,
             np.nan)
 
-        mask_dataframes.append(trial_df.loc[trial_df["CurrentObject"] == "Mask"].copy())
-    # mask_dataframes = mask_dataframes[1:] # remove the first trial because it is not a mask trial
+        mask_dataframes.append(trial_df)
+        # if trial_df['NumCorrect'].min().item() == 0 or trial_df['NumCorrect'].min().item() == 6:
+        #     mask_dataframes.append(trial_df)
+
     print(f"Num trials after removing all parts of trial except 'delay period': {len(mask_dataframes)}")
     return mask_dataframes
 
@@ -172,6 +174,7 @@ def apply_low_pass_filter(mask_dataframes):
             mask_dataframes[i]['DilationPupilRightEye'], cutoff, fs)
 
     return mask_dataframes
+
 
 def plot_trials(indices, mask_dataframes, columns_to_plot, plot_name): 
     for i in indices:
@@ -203,7 +206,39 @@ def plot_trial(subject, trial, mask_dataframes, columns_to_plot, plot_name):
             ax1.legend(loc='upper left')
             plt.savefig(f"{plot_name}_subject_{trial_df['Subject'].iloc[0]}_trial_{trial_df['TrialId'].iloc[0]}.png")
 
-def preprocess_data():
+
+
+def group_by_subject(dataframes):
+    """
+    Group dataframes by subject
+    
+    Args:
+        dataframes: list of dataframes (each dataframe must contain 'Subject' column)
+    
+    Returns:
+        dict: {subject: [dataframes for that subject]}
+    """
+    subject_groups = {}
+    
+    for df in dataframes:
+        if 'Subject' not in df.columns:
+            print(f"Warning: 'Subject' column not found in dataframe, skipping...")
+            continue
+        
+        subject = df['Subject'].iloc[0].item()
+        
+        if subject not in subject_groups:
+            subject_groups[subject] = []
+        
+        subject_groups[subject].append(df)
+    
+    print(f"Grouped data into {len(subject_groups)} subjects")
+    for subject, dfs in subject_groups.items():
+        print(f"  Subject {subject}: {len(dfs)} trials")
+    
+    return subject_groups
+
+def preprocess_data(is_group_by_subject=False, return_original=False):
     filtered_all_trial_dataframes = call_all_filtered_trial_dataframes()
     indices = [1]
     for i,trial in enumerate(filtered_all_trial_dataframes):
@@ -221,16 +256,14 @@ def preprocess_data():
             break
     plot_trials(indices, filtered_all_trial_dataframes, ['DiameterPupilLeftEye', 'DiameterPupilRightEye'], 'interpolated_diameter_pupil')
     mask_dataframes = dilation_preprocessing(filtered_all_trial_dataframes)
-    for i,trial in enumerate(filtered_all_trial_dataframes):
-         if trial["Subject"].iloc[0] == 1005 and trial["TrialId"].iloc[0] == 17:
-            print(f"Adding index {i} for subject: {trial['Subject'].iloc[0]}, trial: {trial['TrialId'].iloc[0]}")
-            indices.extend([i])
-            break
-    plot_trials(indices, mask_dataframes, ['DilationPupilLeftEye', 'DilationPupilRightEye'], 'dilation_pupil')
-    plot_trial(1005, 17, mask_dataframes, ['DilationPupilLeftEye', 'DilationPupilRightEye'], 'dilation_pupil_single_trial')
+    if is_group_by_subject:
+        subject_groups = group_by_subject(mask_dataframes)
+        return subject_groups
     # mask_dataframes = apply_low_pass_filter(mask_dataframes)
+    if return_original:
+        return mask_dataframes, filtered_all_trial_dataframes
     return mask_dataframes
 
 if __name__ == "__main__":
-    mask_dataframes = preprocess_data()
+    mask_dataframes = preprocess_data(is_group_by_subject=True)
     print(mask_dataframes[0])

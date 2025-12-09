@@ -1,2 +1,5 @@
 WM study/
 *.gazedata
+
+*.png
+ __pycache__/*.pyc

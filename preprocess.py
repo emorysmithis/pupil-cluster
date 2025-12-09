@@ -2,13 +2,16 @@ import pandas as pd
 import numpy as np
 import glob
 from scipy.signal import butter, filtfilt
+import random
+import matplotlib.pyplot as plt
 
 def call_all_filtered_trial_dataframes():
     all_trial_dataframes = []
     count = 0
     
-    for filename in glob.glob('WM study/Eye data/*/*.gazedata'):
+    for filename in glob.glob(r'C:\Users\emory\Documents\git_projects\Research\WM study\WM study\Eye data\*\*.gazedata'):
         raw_dataframe = pd.read_csv(filename, sep='\t', low_memory=False)
+        print(f"Processing file: {filename}")
         # split by trial id
         for trial_id in raw_dataframe['TrialId'].unique():
             trial_dataframe = raw_dataframe[raw_dataframe['TrialId'] == trial_id]
@@ -101,12 +104,14 @@ def dilation_preprocessing(filtered_all_trial_dataframes):
 
         adjusted_time_bin_df = time_bin_df.copy()
         adjusted_time_bin_df['time_bin'] = adjusted_time_bin_df['time_ms'] - adjusted_time_bin_df['time_ms'][0]
-        adjusted_time_bin_df = adjusted_time_bin_df.drop(columns=['time_ms'])
+        #adjusted_time_bin_df = adjusted_time_bin_df.drop(columns=['time_ms'])
+        adjusted_time_bin_df["ElapsedTime"] = adjusted_time_bin_df['time_bin']
 
         adjusted_time_bin_df['Subject'] = trial_df_mask['Subject'].iloc[0]
         adjusted_time_bin_df['Session'] = trial_df_mask['Session'].iloc[0]
         adjusted_time_bin_df['TrialId'] = trial_df_mask['TrialId'].iloc[0]
         adjusted_time_bin_df['CurrentObject'] = trial_df_mask['CurrentObject'].iloc[0]
+        adjusted_time_bin_df['NumCorrect'] = trial_df_mask['NumCorrect'].iloc[0]
 
         return adjusted_time_bin_df
         
@@ -168,10 +173,61 @@ def apply_low_pass_filter(mask_dataframes):
 
     return mask_dataframes
 
+def plot_trials(indices, mask_dataframes, columns_to_plot, plot_name): 
+    for i in indices:
+        trial_df = mask_dataframes[i]
+        fig, ax1 = plt.subplots(figsize=(10, 6))
+
+        for column in trial_df.columns:
+            if column in columns_to_plot: # Exclude the label from plotting
+                ax1.plot(trial_df['ElapsedTime'], trial_df[column], label=column)
+
+        ax1.set_xlabel('Time (ms)')
+        ax1.set_ylabel('Pupil Dilation (mm)')
+        plt.title(f'Subject {trial_df['Subject'].iloc[0]}, Trial: {trial_df["TrialId"].iloc[0]} (NumCorrect: {trial_df["NumCorrect"].iloc[0]})')
+        ax1.legend(loc='upper left')
+        plt.savefig(f"{plot_name}_subject_{trial_df['Subject'].iloc[0]}_trial_{trial_df['TrialId'].iloc[0]}.png")
+
+def plot_trial(subject, trial, mask_dataframes, columns_to_plot, plot_name): 
+    for trial_df in mask_dataframes:
+        if trial_df["Subject"].iloc[0] == subject and trial_df["TrialId"].iloc[0] == trial:
+            fig, ax1 = plt.subplots(figsize=(10, 6))
+
+            for column in trial_df.columns:
+                if column in columns_to_plot: # Exclude the label from plotting
+                    ax1.plot(trial_df['ElapsedTime'], trial_df[column], label=column)
+
+            ax1.set_xlabel('Time (ms)')
+            ax1.set_ylabel('Pupil Dilation (mm)')
+            plt.title(f'Subject {trial_df['Subject'].iloc[0]}, Trial: {trial_df["TrialId"].iloc[0]} (NumCorrect: {trial_df["NumCorrect"].iloc[0]})')
+            ax1.legend(loc='upper left')
+            plt.savefig(f"{plot_name}_subject_{trial_df['Subject'].iloc[0]}_trial_{trial_df['TrialId'].iloc[0]}.png")
+
 def preprocess_data():
     filtered_all_trial_dataframes = call_all_filtered_trial_dataframes()
+    indices = [1]
+    for i,trial in enumerate(filtered_all_trial_dataframes):
+        if trial["Subject"].iloc[0] == 1005 and trial["TrialId"].iloc[0] == 17:
+            print(f"Adding index {i} for subject: {trial['Subject'].iloc[0]}, trial: {trial['TrialId'].iloc[0]}")
+            indices.extend([i])
+            break
+    print(f"Indices for plotting: {indices}")
+    plot_trials(indices, filtered_all_trial_dataframes, ['DiameterPupilLeftEye', 'DiameterPupilRightEye'], 'raw_diameter_pupil')
     filtered_all_trial_dataframes = interpolate_diameter_pupil(filtered_all_trial_dataframes)
+    for i,trial in enumerate(filtered_all_trial_dataframes):
+         if trial["Subject"].iloc[0] == 1005 and trial["TrialId"].iloc[0] == 17:
+            print(f"Adding index {i} for subject: {trial['Subject'].iloc[0]}, trial: {trial['TrialId'].iloc[0]}")
+            indices.extend([i])
+            break
+    plot_trials(indices, filtered_all_trial_dataframes, ['DiameterPupilLeftEye', 'DiameterPupilRightEye'], 'interpolated_diameter_pupil')
     mask_dataframes = dilation_preprocessing(filtered_all_trial_dataframes)
+    for i,trial in enumerate(filtered_all_trial_dataframes):
+         if trial["Subject"].iloc[0] == 1005 and trial["TrialId"].iloc[0] == 17:
+            print(f"Adding index {i} for subject: {trial['Subject'].iloc[0]}, trial: {trial['TrialId'].iloc[0]}")
+            indices.extend([i])
+            break
+    plot_trials(indices, mask_dataframes, ['DilationPupilLeftEye', 'DilationPupilRightEye'], 'dilation_pupil')
+    plot_trial(1005, 17, mask_dataframes, ['DilationPupilLeftEye', 'DilationPupilRightEye'], 'dilation_pupil_single_trial')
     # mask_dataframes = apply_low_pass_filter(mask_dataframes)
     return mask_dataframes
 

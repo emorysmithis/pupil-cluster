@@ -332,7 +332,7 @@ class CNN1DHybrid(nn.Module):
         out = self.final(fused)
         return out
 
-def train_model(model, train_loader, val_loader, criterion, optimizer, epochs=20):
+def train_model(model, train_loader, val_loader, criterion, optimizer, device="cpu", epochs=20):
     for epoch in range(epochs):
 
         # ---- Training ----
@@ -342,8 +342,13 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, epochs=20
 
         for X_seq_batch, X_feat_batch, y_batch in train_loader:
             optimizer.zero_grad()
-            dummy_seq = torch.zeros_like(X_seq_batch)
-            logits = model(dummy_seq, X_feat_batch)
+            # dummy_seq = torch.zeros_like(X_seq_batch)
+
+            X_seq_batch = X_seq_batch.to(device)
+            X_feat_batch = X_feat_batch.to(device)
+            y_batch = y_batch.to(device)
+
+            logits = model(X_seq_batch, X_feat_batch)
             loss = criterion(logits, y_batch.float())
 
             loss.backward()
@@ -365,9 +370,13 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, epochs=20
 
         with torch.no_grad():
             for X_seq_batch, X_feat_batch, y_batch in val_loader:
-                dummy_seq = torch.zeros_like(X_seq_batch)
+                # dummy_seq = torch.zeros_like(X_seq_batch)
 
-                logits = model(dummy_seq, X_feat_batch)
+                X_seq_batch = X_seq_batch.to(device)
+                X_feat_batch = X_feat_batch.to(device)
+                y_batch = y_batch.to(device)
+
+                logits = model(X_seq_batch, X_feat_batch)
                 loss = criterion(logits, y_batch.float())
 
                 val_loss += loss.item() * len(y_batch)
@@ -383,6 +392,9 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, epochs=20
             f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.3f} | "
             f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.3f}"
         )
+
+    last_model = model.state_dict()
+    return last_model
 
 def evaluate_accuracy(model, loader, device="cpu", random=True):
     model.eval()
@@ -455,6 +467,13 @@ if __name__ == "__main__":
     args.add_argument('--file_path', type=str, default='WM study/Eye data/*/*.gazedata', help='Path to the gaze data files')
     parsed_args = args.parse_args()
 
+    if torch.cuda.is_available():
+        print("CUDA is available! Using GPU.")
+        device = torch.device("cuda")
+    else:
+        print("CUDA is not available. Using CPU.")
+        device = torch.device("cpu")
+
     filtered_all_trial_dataframes = call_all_filtered_trial_dataframes(parsed_args.file_path)
     filtered_all_trial_dataframes = interpolate_diameter_pupil(filtered_all_trial_dataframes)
     mask_dataframes = dilation_preprocessing(filtered_all_trial_dataframes)
@@ -474,8 +493,8 @@ if __name__ == "__main__":
     # ----------------------------
     # Prepare X_seq (padded sequences)
     # ----------------------------
-    pupil_cols = ["SmoothedDilationPupilLeftEye", "SmoothedDilationPupilRightEye", "SmoothedDilationVelocityLeftEye", "SmoothedDilationVelocityRightEye"]
-    mask_cols = [] #["LeftBlinkMask", "RightBlinkMask"]
+    pupil_cols = ["SmoothedDilationPupilLeftEye", "SmoothedDilationPupilRightEye", "SmoothedDilationVelocityLeftEye", "SmoothedDilationVelocityRightEye"] # 
+    mask_cols = ["LeftBlinkMask", "RightBlinkMask"]
     all_cols = pupil_cols + mask_cols
 
 
@@ -602,11 +621,14 @@ if __name__ == "__main__":
 
     criterion = torch.nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    train_model(model, train_loader, val_loader, criterion, optimizer, epochs=1)
+    model = model.to(device)
+    last_model = train_model(model, train_loader, val_loader, criterion, optimizer, device=device, epochs=20)
 
+    print(f"Test Accuracy last model: ")
 
-    test_acc = evaluate_accuracy(model, test_loader)
-    print(f"Test Accuracy: {test_acc*100:.2f}%")
+    model.load_state_dict(last_model)
+    test_acc = evaluate_accuracy(model, test_loader, device=device, random=False)
+    print(f"{test_acc*100:.2f}%")
 
     # play with batch sizes - DONE, 32 is sweet spot?  
     # try more epochs - DONE, does not help 

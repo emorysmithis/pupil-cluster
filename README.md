@@ -12,7 +12,7 @@ This project processes pupillometry data from “Pupillometry tracks fluctuation
 
 ## Project Structure
 
-## **Main files**
+### **Main files**
 
 #### Exploring the dataset: `BCI_dilation.ipynb`
 **Purpose**: Jupyter notebook for initial exploratory data analysis

@@ -129,7 +129,7 @@ Output from `load_data.py` containing all concatenated raw data from all `.gazed
 ## Dependencies
 
 - **Data Processing**: pandas, numpy
-- **Signal Processing**: scipy (butter, filtfilt), pywavelets
+- **Signal Processing**: scipy
 - **Machine Learning**: scikit-learn, tslearn, torch
 - **Visualization**: matplotlib
 - **Statistical Analysis**: scipy.stats

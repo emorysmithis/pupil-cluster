@@ -1,6 +1,6 @@
-# Pupil Cluster
+# Machine Learning to Detect Working Memory Utilization from Pupillometry
+FA25-EE-67004-01 Brain-Computer Interface class project
 
-Machine Learning to Detect Working Memory Utilization from Pupillometry
 
 ## Overview
 

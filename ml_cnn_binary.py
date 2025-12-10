@@ -342,8 +342,6 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device="c
 
         for X_seq_batch, X_feat_batch, y_batch in train_loader:
             optimizer.zero_grad()
-            # dummy_seq = torch.zeros_like(X_seq_batch)
-
             X_seq_batch = X_seq_batch.to(device)
             X_feat_batch = X_feat_batch.to(device)
             y_batch = y_batch.to(device)
@@ -370,8 +368,6 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, device="c
 
         with torch.no_grad():
             for X_seq_batch, X_feat_batch, y_batch in val_loader:
-                # dummy_seq = torch.zeros_like(X_seq_batch)
-
                 X_seq_batch = X_seq_batch.to(device)
                 X_feat_batch = X_feat_batch.to(device)
                 y_batch = y_batch.to(device)
